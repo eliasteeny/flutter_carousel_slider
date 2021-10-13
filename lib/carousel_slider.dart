@@ -34,10 +34,13 @@ class CarouselSlider extends StatefulWidget {
 
   final int? itemCount;
 
+  final Function(double? realPage)? onPageChanged;
+
   CarouselSlider(
       {required this.items,
       required this.options,
       carouselController,
+      this.onPageChanged,
       Key? key})
       : itemBuilder = null,
         itemCount = items != null ? items.length : 0,
@@ -51,6 +54,7 @@ class CarouselSlider extends StatefulWidget {
       required this.itemBuilder,
       required this.options,
       carouselController,
+      this.onPageChanged,
       Key? key})
       : items = null,
         _carouselController = carouselController ??
@@ -72,6 +76,9 @@ class CarouselSliderState extends State<CarouselSlider>
 
   PageController? pageController;
 
+  late int currentPageIndex;
+  late int pageViewIndex;
+
   /// mode is related to why the page is being changed
   CarouselPageChangedReason mode = CarouselPageChangedReason.controller;
 
@@ -86,17 +93,70 @@ class CarouselSliderState extends State<CarouselSlider>
     carouselState!.options = options;
     carouselState!.itemCount = widget.itemCount;
 
+    if (pageController != null)
+      pageController!.removeListener(pageControllerListener);
+
     // pageController needs to be re-initialized to respond to state changes
     pageController = PageController(
       viewportFraction: options.viewportFraction,
       initialPage: carouselState!.realPage,
     );
+    pageController!.addListener(pageControllerListener);
     carouselState!.pageController = pageController;
 
     // handle autoplay when state changes
     handleAutoPlay();
 
     super.didUpdateWidget(oldWidget);
+  }
+
+  double previousPage = 0;
+  bool isIncreasing = false;
+  pageControllerListener() {
+    if (widget.onPageChanged != null) {
+      if (pageController!.page != null) {
+        isIncreasing = previousPage < pageController!.page!;
+        double currentPageFraction =
+            pageController!.page! - pageController!.page!.floor();
+        // print(currentPageFraction);
+        // print(isIncreasing);
+        if (isIncreasing && currentPageFraction < 0.5 ||
+            !isIncreasing && currentPageFraction > 0.5) {
+          currentPageIndex = getRealIndex(
+                pageViewIndex + carouselState!.initialPage,
+                carouselState!.realPage,
+                widget.itemCount,
+              ) -
+              (!isIncreasing ? 1 : 0);
+        }
+
+        // print(currentPageIndex);
+
+        // if (previousPageFraction < 0.5 &&
+        //     currentPageFraction >= 0.5 &&
+        //     currentPageFraction != 0 &&
+        //     previousPageFraction != 0) {
+        //   currentPageIndex++;
+        // }
+
+        // if (previousPageFraction > 0.5 &&
+        //     currentPageFraction <= 0.5 &&
+        //     currentPageFraction != 0 &&
+        //     previousPageFraction != 0) {
+        //   currentPageIndex--;
+        // }
+        // double currentPage = currentPageIndex -
+        //     (currentPageFraction > 0.5 && currentPageFraction < 1 ? 1 : 0);
+        double pageOffset = currentPageIndex + currentPageFraction;
+        widget.onPageChanged!(
+          pageOffset + (pageOffset < 0 ? widget.itemCount! : 0),
+        );
+        // print(currentPageFraction);
+        // print(previousPageFraction);
+        // print(currentPageIndex);
+        previousPage = pageController!.page!;
+      }
+    }
   }
 
   @override
@@ -113,10 +173,15 @@ class CarouselSliderState extends State<CarouselSlider>
         : carouselState!.initialPage;
     handleAutoPlay();
 
+    currentPageIndex = carouselState!.initialPage;
+    pageViewIndex = carouselState!.realPage;
+
     pageController = PageController(
       viewportFraction: options.viewportFraction,
       initialPage: carouselState!.realPage,
     );
+
+    pageController!.addListener(pageControllerListener);
 
     carouselState!.pageController = pageController;
   }
@@ -272,6 +337,8 @@ class CarouselSliderState extends State<CarouselSlider>
       itemCount: widget.options.enableInfiniteScroll ? null : widget.itemCount,
       key: widget.options.pageViewKey,
       onPageChanged: (int index) {
+        pageViewIndex = index;
+
         int currentPage = getRealIndex(index + carouselState!.initialPage,
             carouselState!.realPage, widget.itemCount);
         if (widget.options.onPageChanged != null) {

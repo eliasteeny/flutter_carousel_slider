@@ -1,5 +1,7 @@
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
+import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
 final List<String> imgList = [
   'https://images.unsplash.com/photo-1520342868574-5fa3804e551c?ixlib=rb-0.3.5&ixid=eyJhcHBfaWQiOjEyMDd9&s=6ff92caffcdd63681a35134a6770ed3b&auto=format&fit=crop&w=1951&q=80',
@@ -102,22 +104,57 @@ class CarouselDemoHome extends StatelessWidget {
   }
 }
 
-class BasicDemo extends StatelessWidget {
+class BasicDemo extends StatefulWidget {
+  @override
+  State<BasicDemo> createState() => _BasicDemoState();
+}
+
+class _BasicDemoState extends State<BasicDemo> {
+  late double offset;
+
+  @override
+  void initState() {
+    offset = 0;
+    super.initState();
+  }
+
+  updateOffset(double? newOffset) {
+    print(newOffset);
+    if (newOffset != null) {
+      offset = newOffset;
+      setState(() {});
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     List<int> list = [1, 2, 3, 4, 5];
+
     return Scaffold(
       appBar: AppBar(title: Text('Basic demo')),
-      body: Container(
-          child: CarouselSlider(
-        options: CarouselOptions(),
-        items: list
-            .map((item) => Container(
-                  child: Center(child: Text(item.toString())),
-                  color: Colors.green,
-                ))
-            .toList(),
-      )),
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            child: CarouselSlider.builder(
+              itemCount: 5,
+              onPageChanged: updateOffset,
+              options: CarouselOptions(
+                initialPage: 0,
+                enableInfiniteScroll: false,
+              ),
+              itemBuilder: (_, index, __) => Container(
+                child: Center(child: Text(list[index].toString())),
+                color: Colors.green,
+              ),
+            ),
+          ),
+          SmoothIndicator(
+            offset: offset,
+            count: 5,
+          )
+        ],
+      ),
     );
   }
 }
